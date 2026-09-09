@@ -14,7 +14,6 @@ try:
         ModelRef,
         user_text_message,
         assistant_text_message,
-        system_text_message,
     )
 except ImportError:
     # Dummy fallbacks if agento11y isn't imported directly
@@ -30,8 +29,6 @@ except ImportError:
         return {"role": "user", "content": text}
     def assistant_text_message(text):
         return {"role": "assistant", "content": text}
-    def system_text_message(text):
-        return {"role": "system", "content": text}
 
 if Config.USE_VERTEXAI:
     # Authenticates automatically via Application Default Credentials (ADC)
@@ -62,6 +59,7 @@ def generate_cinematic_package(scene_description: str) -> tuple[ShotSetup, Image
                     agent_name="cinematographer-dop-reasoner",
                     agent_version="1.0.0",
                     model=ModelRef(provider="google", name="gemini-2.5-flash"),
+                    system_prompt=DOP_SYSTEM_PROMPT,
                     tags={"pipeline": "pre-production", "role": "dop_reasoner"},
                 )
             ) as dop_rec:
@@ -82,10 +80,7 @@ def generate_cinematic_package(scene_description: str) -> tuple[ShotSetup, Image
 
                     usage_meta = getattr(text_response, "usage_metadata", None)
                     dop_rec.set_result(
-                        input=[
-                            system_text_message(DOP_SYSTEM_PROMPT),
-                            user_text_message(scene_description)
-                        ],
+                        input=[user_text_message(scene_description)],
                         output=[assistant_text_message(text_response.text or "")],
                         response_model="gemini-2.5-flash",
                         stop_reason="stop",
