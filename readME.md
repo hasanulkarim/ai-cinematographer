@@ -13,9 +13,10 @@ An intelligent agentic pre-production studio that transforms narrative scene des
 - **Director of Photography (DoP) Reasoning** — Uses `gemini-2.5-flash` with structured Pydantic output to translate narrative scenes into focal lengths, camera angles, lighting ratios, and composition instructions.
 - **Storyboard Image Rendering** — Leverages `gemini-2.5-flash-image` (Gemini native image generation) to instantly visualize the shot from the DoP's technical specs.
 - **Full Grafana Observability Pipeline**:
-  - **Agent Observability (agento11y)** — Tracks multi-agent interactions, model IDs, latency, and DAG dependency relationships between the DoP reasoner and image renderer.
+  - **Agent Observability (agento11y)** — Tracks multi-agent interactions, model IDs, latency, and DAG dependency relationships between the DoP reasoner and image renderer. Includes **Custom Evaluators** for safety and quality (e.g., *prompt_injection_detection*, *cinematic_feasibility*).
   - **OpenTelemetry Traces & Metrics** — Distributed span hierarchies and `gen_ai.client.*` metrics exported to Grafana Cloud via OTLP.
-- **Streamlit Web UI** — Side-by-side visualization of generated storyboards and technical shot specifications.
+- **Grafana MCP Integration (Budget Agent)** — An autonomous "Studio Executive" agent powered by the Model Context Protocol (MCP) that queries Grafana Prometheus metrics in real-time to monitor token usage and estimate operational costs.
+- **Streamlit Web UI** — Side-by-side visualization of generated storyboards, technical shot specifications, and executive budget reports.
 
 ---
 
@@ -31,13 +32,17 @@ graph LR
     A[User: Scene Description] --> B[DoP Reasoner Agent]
     B -->|Structured JSON| C[Image Renderer Agent]
     C --> D[Storyboard Image + Shot Specs]
+    
+    A --> E[Studio Executive Budget Agent]
+    E -.->|MCP / PromQL| F[Grafana Prometheus]
+    F -.->|Metrics| E
 
-    B -.->|agento11y + OTel| E[Grafana Cloud]
-    C -.->|agento11y + OTel| E
+    B -.->|agento11y + OTel| G[Grafana Cloud]
+    C -.->|agento11y + OTel| G
 
     subgraph "Google Cloud (Vertex AI)"
-        B -- gemini-2.5-flash --> F[Text Generation]
-        C -- gemini-2.5-flash-image --> G[Image Generation]
+        B -- gemini-2.5-flash --> H[Text Generation]
+        C -- gemini-2.5-flash-image --> I[Image Generation]
     end
 ```
 </details>
@@ -58,6 +63,7 @@ ai-cinematographer/
     ├── schemas.py               # Pydantic data contracts & DoP system prompt
     ├── telemetry.py             # OpenTelemetry & agento11y initialization
     ├── agent.py                 # Multi-agent pipeline (DoP reasoning → image gen)
+    ├── budget_agent.py          # MCP Grafana Integration for cost monitoring
     └── app.py                   # Streamlit presentation layer
 ```
 
@@ -71,8 +77,22 @@ The pipeline separates generation tasks into distinct, accountable agent roles t
 | :--- | :--- | :--- | :--- |
 | **DoP Reasoning** | `cinematographer-dop-reasoner` | `gemini-2.5-flash` | None (Root) |
 | **Storyboard Rendering** | `storyboard-image-renderer` | `gemini-2.5-flash-image` | `[dop_generation_id]` |
+| **Budget Monitor** | `budget-executive-agent` | MCP Grafana Server | None |
 
-The `storyboard-image-renderer` records `parent_generation_ids` pointing to the DoP reasoning step, building a dependency DAG in Grafana Agent Observability for end-to-end pipeline tracing.
+### Custom AI Evaluators
+The project leverages Grafana Agent Observability **Evaluators** to ensure the quality and safety of the generated content:
+- `prompt_injection_detection`: Ensures the user isn't trying to hijack the DoP prompt.
+- `cinematographer_dop_reasoner_fulfillment`: Verifies the DoP agent correctly outputted all technical fields.
+- `hallucination_detector`: Ensures the generated image prompt aligns with the user's original scene description.
+- `cinematic_feasibility`: Checks if the camera equipment requested actually exists and is physically possible to rig.
+- `response_not_empty`: Basic fallback check to ensure outputs aren't dropped.
+
+---
+
+## 🔌 Grafana MCP Integration
+
+We implemented the **Grafana MCP Server** (Model Context Protocol) to create an autonomous "Studio Executive" Budget Agent.
+This agent runs as a subprocess when a scene is generated, using the MCP `query_prometheus` tool to execute real-time PromQL queries against Grafana Cloud. It pulls `gen_ai.client.token.usage` OpenTelemetry metrics, parses the timeseries JSON payload, and formats it into a Markdown cost-estimation table directly inside the Streamlit UI.
 
 ---
 
@@ -84,6 +104,7 @@ The `storyboard-image-renderer` records `parent_generation_ids` pointing to the 
 - A Google Cloud project with Vertex AI API enabled
 - Google Cloud CLI (`gcloud`) installed and authenticated
 - A Grafana Cloud account with Agent Observability enabled
+- A Grafana Service Account Token (Viewer role) for MCP
 
 ### 1. Clone the Repository
 
@@ -156,9 +177,11 @@ You will receive an HTTPS URL (e.g., `https://ai-cinematographer-xyz.a.run.app`)
 | `GEMINI_API_KEY` | Only needed if `USE_VERTEXAI=false` |
 | `AGENTO11Y_ENDPOINT` | Grafana Agent Observability endpoint |
 | `AGENTO11Y_AUTH_TENANT_ID` | Grafana Cloud tenant ID |
-| `AGENTO11Y_AUTH_TOKEN` | Grafana Cloud API token |
+| `AGENTO11Y_AUTH_TOKEN` | Grafana Cloud API token (Cloud Access Policy) |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP gateway endpoint for traces/metrics |
 | `OTEL_EXPORTER_OTLP_HEADERS` | Authorization header for OTLP export |
+| `GRAFANA_URL` | Your Grafana Instance URL (e.g. `https://my.grafana.net/`) |
+| `GRAFANA_API_TOKEN` | Grafana Service Account Token (`glsa_...`) for MCP |
 
 ---
 
@@ -182,4 +205,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 Built for the [Agentic Cinema Hackathon](https://agentic-cinema.devpost.com/) — **Grafana Labs Partner Track**.
 
-**Tech Stack**: Google Gemini (Vertex AI) · Grafana Agent Observability (agento11y) · OpenTelemetry · Streamlit · Google Cloud Run
+**Tech Stack**: Google Gemini (Vertex AI) · Grafana Agent Observability (agento11y) · OpenTelemetry · Model Context Protocol (MCP) · Streamlit · Google Cloud Run
