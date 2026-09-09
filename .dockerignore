@@ -1,0 +1,12 @@
+.env
+venv/
+venv_old/
+__pycache__/
+.pytest_cache/
+.git/
+.gitignore
+*.md
+LICENSE
+tests/
+.vscode/
+.idea/

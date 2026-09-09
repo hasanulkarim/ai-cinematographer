@@ -1,0 +1,10 @@
+streamlit
+pydantic
+google-genai
+pillow
+python-dotenv
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-exporter-otlp
+agento11y
+pytest
