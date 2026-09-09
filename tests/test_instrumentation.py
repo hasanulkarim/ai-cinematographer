@@ -79,6 +79,8 @@ def test_generation_instrumentation_records_correct_agents(mock_agento11y, mock_
     dop_result_kwargs = dop_rec.set_result.call_args.kwargs
     assert dop_result_kwargs["response_model"] == "gemini-2.5-flash"
     assert dop_result_kwargs["stop_reason"] == "stop"
+    assert dop_result_kwargs["input_tokens"] == 145
+    assert dop_result_kwargs["output_tokens"] == 78
 
     # Check Storyboard render generation call & parent linkage
     img_start_arg = calls[1].args[0]

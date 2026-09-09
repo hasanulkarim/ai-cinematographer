@@ -14,6 +14,7 @@ try:
         ModelRef,
         user_text_message,
         assistant_text_message,
+        system_text_message,
     )
 except ImportError:
     # Dummy fallbacks if agento11y isn't imported directly
@@ -29,6 +30,8 @@ except ImportError:
         return {"role": "user", "content": text}
     def assistant_text_message(text):
         return {"role": "assistant", "content": text}
+    def system_text_message(text):
+        return {"role": "system", "content": text}
 
 if Config.USE_VERTEXAI:
     # Authenticates automatically via Application Default Credentials (ADC)
@@ -44,7 +47,7 @@ else:
 def generate_cinematic_package(scene_description: str) -> tuple[ShotSetup, Image]:
     """Generates the shot metadata and storyboard image."""
     conversation_id = f"scene_{uuid.uuid4().hex[:12]}"
-    dop_generation_id = None
+    dop_generation_id = f"gen_{uuid.uuid4().hex}"
 
     with tracer.start_as_current_span("generate_cinematic_package") as parent_span:
         parent_span.set_attribute("app.scene_input_length", len(scene_description))
@@ -54,6 +57,7 @@ def generate_cinematic_package(scene_description: str) -> tuple[ShotSetup, Image
         with tracer.start_as_current_span("llm_reasoning_gemini_flash") as text_span:
             with agento11y_client.start_generation(
                 GenerationStart(
+                    id=dop_generation_id,
                     conversation_id=conversation_id,
                     agent_name="cinematographer-dop-reasoner",
                     agent_version="1.0.0",
@@ -61,7 +65,6 @@ def generate_cinematic_package(scene_description: str) -> tuple[ShotSetup, Image
                     tags={"pipeline": "pre-production", "role": "dop_reasoner"},
                 )
             ) as dop_rec:
-                dop_generation_id = getattr(dop_rec, "generation_id", None)
                 try:
                     text_response = client.models.generate_content(
                         model='gemini-2.5-flash',
@@ -79,10 +82,15 @@ def generate_cinematic_package(scene_description: str) -> tuple[ShotSetup, Image
 
                     usage_meta = getattr(text_response, "usage_metadata", None)
                     dop_rec.set_result(
-                        input=[user_text_message(scene_description)],
+                        input=[
+                            system_text_message(DOP_SYSTEM_PROMPT),
+                            user_text_message(scene_description)
+                        ],
                         output=[assistant_text_message(text_response.text or "")],
                         response_model="gemini-2.5-flash",
                         stop_reason="stop",
+                        input_tokens=usage_meta.prompt_token_count if usage_meta else 0,
+                        output_tokens=usage_meta.candidates_token_count if usage_meta else 0,
                     )
                 except Exception as e:
                     text_span.record_exception(e)
