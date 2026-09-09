@@ -7,6 +7,8 @@ An intelligent agentic pre-production studio that transforms narrative scene des
 > **Agentic Cinema Hackathon** — Grafana Labs Partner Track
 
 ---
+## LIVE app
+https://ai-cinematographer-1071855107814.us-central1.run.app/
 
 ## 🌟 Features
 
