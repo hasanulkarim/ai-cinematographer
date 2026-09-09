@@ -4,8 +4,14 @@ from typing import Optional
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-# Define the path to the MCP Grafana executable
-MCP_GRAFANA_EXE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'mcp-grafana-bin', 'mcp-grafana.exe')
+import platform
+
+# Define the path to the MCP Grafana executable based on OS
+if platform.system() == "Windows":
+    MCP_GRAFANA_EXE = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'mcp-grafana-bin', 'mcp-grafana.exe')
+else:
+    # On Cloud Run (Linux), we'll install it globally in the Docker container
+    MCP_GRAFANA_EXE = "mcp-grafana"
 
 async def get_budget_report(grafana_url: str, grafana_token: str) -> str:
     """
