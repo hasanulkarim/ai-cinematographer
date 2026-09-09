@@ -21,6 +21,11 @@ An intelligent agentic pre-production studio that transforms narrative scene des
 
 ## 🏗️ Architecture
 
+![AI Cinematographer Architecture](docs/architecture.jpg)
+
+<details>
+<summary>View as text diagram</summary>
+
 ```mermaid
 graph LR
     A[User: Scene Description] --> B[DoP Reasoner Agent]
@@ -35,6 +40,7 @@ graph LR
         C -- gemini-2.5-flash-image --> G[Image Generation]
     end
 ```
+</details>
 
 ### Project Structure
 
