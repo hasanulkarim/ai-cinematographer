@@ -12,6 +12,7 @@ try:
     from agento11y import (
         GenerationStart,
         ModelRef,
+        TokenUsage,
         user_text_message,
         assistant_text_message,
     )
@@ -25,6 +26,10 @@ except ImportError:
         def __init__(self, provider, name):
             self.provider = provider
             self.name = name
+    class TokenUsage:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
     def user_text_message(text):
         return {"role": "user", "content": text}
     def assistant_text_message(text):
@@ -84,8 +89,10 @@ def generate_cinematic_package(scene_description: str) -> tuple[ShotSetup, Image
                         output=[assistant_text_message(text_response.text or "")],
                         response_model="gemini-2.5-flash",
                         stop_reason="stop",
-                        input_tokens=usage_meta.prompt_token_count if usage_meta else 0,
-                        output_tokens=usage_meta.candidates_token_count if usage_meta else 0,
+                        usage=TokenUsage(
+                            input_tokens=usage_meta.prompt_token_count if usage_meta else 0,
+                            output_tokens=usage_meta.candidates_token_count if usage_meta else 0,
+                        ),
                     )
                 except Exception as e:
                     text_span.record_exception(e)
