@@ -34,5 +34,15 @@ if st.button("Generate Shot & Storyboard", type="primary"):
                     st.markdown(f"**Subject Action:** {shot_data.subject_action}")
                     st.markdown(f"**Environment:** {shot_data.environmental_context}")
                     
+                st.divider()
+                with st.spinner("Executive Agent is querying Grafana MCP for Budget Report..."):
+                    import asyncio
+                    import os
+                    from budget_agent import get_budget_report
+                    grafana_url = os.getenv("GRAFANA_URL")
+                    grafana_token = os.getenv("GRAFANA_API_TOKEN")
+                    report = asyncio.run(get_budget_report(grafana_url, grafana_token))
+                    st.info(report)
+                    
             except Exception as e:
                 st.error(str(e))

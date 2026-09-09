@@ -8,3 +8,4 @@ opentelemetry-sdk
 opentelemetry-exporter-otlp
 agento11y
 pytest
+mcp

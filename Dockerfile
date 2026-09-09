@@ -2,9 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
+# Install apt dependencies
+RUN apt-get update && apt-get install -y curl tar && rm -rf /var/lib/apt/lists/*
+
+# Install python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Download and install Grafana MCP server for Linux
+RUN curl -sL https://github.com/grafana/mcp-grafana/releases/download/v1.3.0/mcp-grafana_Linux_x86_64.tar.gz | tar -xz -C /usr/local/bin mcp-grafana
 
 # Copy application source
 COPY src/ ./src/
